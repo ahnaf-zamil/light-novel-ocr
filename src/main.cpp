@@ -4,7 +4,6 @@
 #include <ctime>
 #include <chrono>
 #include <map>
-#include <nlohmann/json.hpp>
 
 std::string get_cwd()
 {

@@ -11,6 +11,7 @@
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
+				<Option use_console_runner="0" />
 				<Option parameters="pages" />
 				<Compiler>
 					<Add option="-g" />
@@ -29,7 +30,8 @@
 				<Option object_output="obj/Release/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters="pages" />
+				<Option use_console_runner="0" />
+				<Option parameters="--ocr" />
 				<Compiler>
 					<Add option="-O2" />
 					<Add directory="include" />
