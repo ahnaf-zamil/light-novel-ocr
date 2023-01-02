@@ -1,0 +1,7 @@
+pages/
+*.layout
+*.depend
+*.exe
+bin/
+tmp/
+obj/
