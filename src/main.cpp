@@ -1,9 +1,4 @@
-#include <dirent.h>
-#include <errno.h>
-#include <analyser.h>
-#include <ctime>
-#include <chrono>
-#include <map>
+#include <main.h>
 
 std::string get_cwd()
 {
@@ -13,8 +8,25 @@ std::string get_cwd()
     return working_directory;
 }
 
+std::vector<std::string> splitString(const std::string& str)
+{
+    std::vector<std::string> tokens;
+
+    std::stringstream ss(str);
+    std::string token;
+    while (std::getline(ss, token, '\n'))
+    {
+        tokens.push_back(token);
+    }
+
+    return tokens;
+}
+
 void print_banner()
 {
+    std::string tess_version = exec("tesseract --version");
+    std::vector<std::string> tokens = splitString(tess_version);
+
     std::time_t t = std::time(nullptr);
     std::tm* const pTInfo = std::localtime(&t);
 
@@ -32,7 +44,8 @@ void print_banner()
     std::cout << banner << std::endl << std::endl;
     std::cout << "Copyright DevGuyAhnaf " << 1900 + pTInfo->tm_year << " | All rights reserved"
               << std::endl;
-    std::cout << "OpenCV " << CV_VERSION << std::endl << std::endl;
+    std::cout << "OpenCV " << CV_VERSION << std::endl;
+    std::cout << tokens[0] << std::endl << std::endl;
 }
 
 void start_analyser(std::string pwd, std::string page_folder)
@@ -81,69 +94,6 @@ void start_analyser(std::string pwd, std::string page_folder)
     }
 }
 
-std::map<std::string, std::vector<std::string>> get_files(std::string img_folder_path)
-{
-    // Gets all files in the respective folders of each image
-
-    std::map<std::string, std::vector<std::string>> file_map = {};
-
-    DIR* d;
-    struct dirent* img_dir;
-    d = opendir(img_folder_path.c_str());
-    if (d)
-    {
-        int i = 0;
-        while ((img_dir = readdir(d)) != NULL)
-        {
-            if (i > 1)
-            {
-                std::string section_dir_fpath = img_folder_path + "\\" + img_dir->d_name;
-
-                DWORD folder_attr = GetFileAttributesA(section_dir_fpath.c_str());
-                if (folder_attr & FILE_ATTRIBUTE_DIRECTORY)
-                {
-                    // If entry is a directory, do OCR for all images in that img_dir
-                    // (loop again)
-                    // Looping over all files in each section folder. At this point idk
-                    // how to name the vars
-                    DIR* s_d;
-                    struct dirent* section_dir;
-                    s_d = opendir(section_dir_fpath.c_str());
-                    int j = 0;
-                    while ((section_dir = readdir(s_d)) != NULL)
-                    {
-                        if (j > 1)
-                        {
-                            std::string section_idx_fpath
-                                = section_dir_fpath + "\\" + section_dir->d_name;
-
-                            if (file_map.find(img_dir->d_name) == file_map.end())
-                            {
-                                // entry not found
-                                file_map[img_dir->d_name] = {};
-                            }
-                            file_map[img_dir->d_name].push_back(section_idx_fpath);
-                        }
-                        j++;
-                    }
-                    closedir(s_d);
-                }
-            }
-            i++;
-        }
-
-        closedir(d);
-    }
-    else if (ENOENT == errno)
-    {
-        std::cout << "Err: Directory "
-                  << "tmp"
-                  << " does not exist in pwd" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    return file_map;
-}
 
 void start_ocr(std::string pwd)
 {
@@ -151,36 +101,47 @@ void start_ocr(std::string pwd)
     struct dirent* dir;
 
     std::string tmp_path = pwd + "\\" + "tmp";
+    std::string out_dir = pwd + "\\" + "ocr_out";
+    std::vector<std::thread> threads;
 
-    d = opendir(tmp_path.c_str());
-    if (d)
+    if (CreateDirectory(out_dir.c_str(), NULL) || ERROR_ALREADY_EXISTS == GetLastError())
     {
-        int i = 0;
-        while ((dir = readdir(d)) != NULL)
+        d = opendir(tmp_path.c_str());
+        if (d)
         {
-            if (i > 1)
+            int i = 0;
+            while ((dir = readdir(d)) != NULL)
             {
-                std::string img_folder_path = tmp_path + "\\" + dir->d_name;
-                DWORD file_attr = GetFileAttributesA(img_folder_path.c_str());
-                if (file_attr & FILE_ATTRIBUTE_DIRECTORY)
+                if (i > 1)
                 {
-                    // If entry is a directory, do OCR for all images in that dir (loop
-                    // again)
-                    std::cout << std::endl << "All sections in " << img_folder_path << std::endl;
-                    get_files(img_folder_path);
+                    std::string img_folder_path = tmp_path + "\\" + dir->d_name;
+                    DWORD file_attr = GetFileAttributesA(img_folder_path.c_str());
+                    if (file_attr & FILE_ATTRIBUTE_DIRECTORY)
+                    {
+                        // If entry is a directory, do OCR for all images in that dir (loop
+                        // again)
+                        // Storing thread in vector to join later
+                        threads.emplace_back(std::thread(do_ocr_for_folder, out_dir + "\\" + dir->d_name + ".txt", img_folder_path));
+                    }
                 }
+                i++;
             }
-            i++;
+
+            closedir(d);
+        }
+        else if (ENOENT == errno)
+        {
+            std::cout << "Err: Directory "
+                      << "tmp"
+                      << " does not exist in pwd" << std::endl;
+            exit(EXIT_FAILURE);
         }
 
-        closedir(d);
-    }
-    else if (ENOENT == errno)
-    {
-        std::cout << "Err: Directory "
-                  << "tmp"
-                  << " does not exist in pwd" << std::endl;
-        exit(EXIT_FAILURE);
+        // Joining threads to keep program running till tasks are done
+        for (std::thread& th : threads)
+        {
+            th.join();
+        }
     }
 }
 

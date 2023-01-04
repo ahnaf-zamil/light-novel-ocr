@@ -5,3 +5,5 @@ pages/
 bin/
 tmp/
 obj/
+ocr_out/
+*.out

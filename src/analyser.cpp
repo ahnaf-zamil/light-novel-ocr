@@ -1,11 +1,4 @@
-#include <opencv2/imgcodecs.hpp>
-#include <opencv2/imgproc.hpp>
-#include <bits/stdc++.h>
-#include <string>
-#include <cmath>
-#include <stdio.h>
-#include <analyser.h>
-#include <typeinfo>
+#include <main.h>
 
 using Ctr = std::vector<cv::Point>;
 using CtrVec = std::vector<Ctr>; // Contour vector
@@ -78,7 +71,7 @@ CtrVec find_text(cv::Mat section)
 {
     // Finds text from the contoured section, and draw contours around it
     cv::Mat binary = binarize(section);
-    cv::Mat kernel = cv::Mat::ones(floor(50), 8, CV_8S);
+    cv::Mat kernel = cv::Mat::ones(floor(50), 10, CV_8S);
     CtrVec ctrs = find_contours_text(binary, kernel);
     CtrVec sorted_ctrs = sort_contours(ctrs);
     return sorted_ctrs;
